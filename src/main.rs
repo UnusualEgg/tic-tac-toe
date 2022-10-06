@@ -47,9 +47,10 @@ fn main() {
 	print_board(&board);
 	// send_board(&mut tcp_stream, &board);
 	let mut x = check_win(&board);
-	let rematch:bool=true;
-	while ramatch {
-		while x==0  {
+	let mut rematch:bool=true;
+	let mut full:bool=false;
+	while rematch {
+		while x==0&&!full  {
 			//do plr turn
 			if plr==plr_num {
 				println!("Yo it's my turn");
@@ -94,9 +95,10 @@ fn main() {
 			plr = if plr==1 {2} else {1};
 			x=check_win(&board);
 			println!("x:{}",x);
+			full=check_full(&board);
 			print_board(&board);
 		}
-		rematch_enum : yn= input("Rematch[y/n]:");
+		let rematch_enum : yn= input("Rematch[y/n]:");
 		rematch=match rematch_enum {
 			yn::y => true,
 			yn::n => false
@@ -134,6 +136,12 @@ fn test_empty() {
 fn test_multiple_on_baord() {
 	assert_eq!(check_win(&[[b'x',b'o',b'o'],[0,0,b'o'],[0,0,b'o']]),b'o');
 }
+#[test]
+fn test_check_full() {
+	assert_eq!(check_full(&[[b'x',b'x',b'o'];3]),true);
+	assert_eq!(check_full(&[[b'x',b'o',b'.'];3]),false);
+	assert_eq!(check_full(&[[b'.';3];3]),false);
+}
 
 #[derive(Debug)]
 enum yn {
@@ -151,7 +159,7 @@ impl FromStr for yn {
 	}
 }
 #[derive(Debug)]
-enum pos {
+enum Pos {
 	tl=0,
 	t=1,
 	tr=2,
@@ -188,12 +196,15 @@ fn print_board(board: &[[u8;3];3]) {
 	}
 	println!("\x08-----\n\n");
 }
-fn check_empty(board: &[[u8;3];3]) -> bool {
+fn check_full(board: &[[u8;3];3]) -> bool {
 	for y in 0..3 {
 		for x in 0..3 {
-			if board[y][x]
+			if board[y][x]!=b'x'&&board[y][x]!=b'o' {//if any empty spaces
+				return false;//then exit
+			}
 		}
 	}
+	return true;//found no empty spaces
 }
 fn check_win(board: &[[u8;3];3]) -> u8 {
 	const wins:[[[u8;3];3];8] = [
