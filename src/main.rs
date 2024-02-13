@@ -152,8 +152,8 @@ impl FromStr for yn {
 	type Err = String;
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s {
-			"y"		=>Ok(yn::y),
-			"n" 	=>Ok(yn::n),
+			"y" => Ok(yn::y),
+			"n" => Ok(yn::n),
 			_ => Err("Yes or No[y/n]: {}".to_string().replace("{}", s)),
 		}
 	}
@@ -174,15 +174,15 @@ impl FromStr for Pos {
 	type Err = String;
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s {
-			"tl"	=>Ok(Pos::tl),
-			"t" 	=>Ok(Pos::t ),
-			"tr"	=>Ok(Pos::tr),
-			"l" 	=>Ok(Pos::l ),
-			"c" 	=>Ok(Pos::c ),
-			"r" 	=>Ok(Pos::r ),
-			"bl"	=>Ok(Pos::bl),
-			"b" 	=>Ok(Pos::b ),
-			"br" 	=>Ok(Pos::br),
+			"tl" => Ok(Pos::tl),
+			"t"  => Ok(Pos::t ),
+			"tr" => Ok(Pos::tr),
+			"l"  => Ok(Pos::l ),
+			"c"  => Ok(Pos::c ),
+			"r"  => Ok(Pos::r ),
+			"bl" => Ok(Pos::bl),
+			"b"  => Ok(Pos::b ),
+			"br" => Ok(Pos::br),
 			_ => Err("Pick a valid spot. you picked: {}".to_string().replace("{}", s)),
 		}
 	}
