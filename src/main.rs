@@ -32,7 +32,6 @@ fn main() {
 	}
 	
     //server picks pick random first player
-	let mut board: [[u8;3];3] = [[b'.';3];3];
 	let mut plr:u8;
 	if !is_client {
 		plr = if rand::random() {1} else {2};//player 1's turn(50/50 bc bool is only true or false)
@@ -47,10 +46,15 @@ fn main() {
 
 
 	//actually run the game now
-    let mut x:u8 = 0;//the winning player or 0
+	let mut board: [[u8;3];3];
+    let mut x:u8;//the winning player or 0
+	let mut full:bool;
 	let mut rematch:bool=true;
-	let mut full:bool=false;
 	while rematch {
+        //reset eatch match
+        x=0;
+        full=false;
+        board=[[b'.';3];3];
 		while x==0&&!full  {
             println!("{}{}'s turn",termion::clear::All, if plr==1 {'x'} else {'o'});
 			//do plr turn
