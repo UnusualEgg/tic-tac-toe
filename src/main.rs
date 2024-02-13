@@ -11,24 +11,20 @@ fn main() {
 	input_line = input_line.to_ascii_lowercase().replace("\n", "");
 	let is_client= input_line!="s".to_string();
 	input_line.clear();
-	println!("{}",is_client);
 	
-	let ip;
-	if is_client {
-		ip = get_ip();		
-	}
-	else {
-		ip = local_ip().unwrap();
-	}
-	let port=get_port();
-	println!("{:?}",ip);
+	let (ip,port,client_addr);
 	let mut tcp_stream;
-	let client_addr;
 	if !is_client {
-		let socket = TcpListener::bind((ip,port)).unwrap();
+		ip = local_ip().unwrap();
+		let socket = TcpListener::bind((ip,0)).unwrap();
+        println!("serving on {:?}",socket.local_addr().unwrap());
+        print!("awaiting connection... ");
+        stdout.flush().unwrap();
 		(tcp_stream, client_addr) = socket.accept().expect("Nope");
-		println!("client address:{}",client_addr);
+		println!("Connection from {}",client_addr);
 	} else {
+		ip = get_ip();		
+        port=get_port();
 		tcp_stream = TcpStream::connect((ip,port)).unwrap();
 	}
 	
