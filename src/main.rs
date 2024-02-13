@@ -1,13 +1,16 @@
-use std::{net::{TcpListener, TcpStream, IpAddr}, io::{Write, Read}, str::FromStr, fmt::Debug};
-use termion::screen::IntoAlternateScreen;
+use std::{net::{TcpListener, TcpStream, SocketAddr}, io::{Write, Read}, str::FromStr, fmt::Debug};
+use termion::screen::{IntoAlternateScreen,ToMainScreen};
 use local_ip_address::local_ip;
+use std::sync::atomic::{AtomicBool,Ordering};
+static INT:AtomicBool = AtomicBool::new(false);
 fn main() {
 
 	//get option client or server
     let mut input_line = String::new();
 	let stdin = std::io::stdin();
 	let mut stdout = std::io::stdout().into_alternate_screen().unwrap();
-	print!("Server or Client[s/C]: ");
+	ctrlc::set_handler(|| {println!("{}",ToMainScreen);INT.store(true,Ordering::SeqCst)}).expect("couldn't set ctrlc handler");
+    print!("Server or Client[s/C]: ");
 	stdout.flush().unwrap();
 	stdin.read_line(&mut input_line).unwrap();
 	input_line = input_line.to_ascii_lowercase().replace("\n", "");
@@ -15,20 +18,20 @@ fn main() {
 	input_line.clear();
 
 	//bind/connect
-	let (ip,port,client_addr);
 	let mut tcp_stream;
 	if !is_client {
-		ip = local_ip().unwrap();
+		let ip = local_ip().unwrap();
 		let socket = TcpListener::bind((ip,0)).unwrap();
         println!("serving on {:?}",socket.local_addr().unwrap());
         print!("awaiting connection... ");
         stdout.flush().unwrap();
-		(tcp_stream, client_addr) = socket.accept().expect("Nope");
+		let client_addr;
+        (tcp_stream, client_addr) = socket.accept().expect("Nope");
 		println!("Connection from {}",client_addr);
 	} else {
-		ip = get_ip();		
-        port=get_port();
-		tcp_stream = TcpStream::connect((ip,port)).unwrap();
+		let ip = get_ip();
+        //port=get_port();
+		tcp_stream = TcpStream::connect(ip).unwrap();
 	}
 	
     //server picks pick random first player
@@ -56,7 +59,7 @@ fn main() {
         full=false;
         board=[[b'.';3];3];
 		while x==0&&!full  {
-            println!("{}{}'s turn",termion::clear::All, if plr==1 {'x'} else {'o'});
+            println!("{}{}{}'s turn",termion::clear::All, termion::cursor::Goto(1,1), if plr==1 {'x'} else {'o'});
 			//do plr turn
 			if plr==plr_num {
 				println!("Yo it's my turn");
@@ -87,25 +90,21 @@ fn main() {
 		}//while currently playing
         
         //show winning move
-        print!("{}",termion::clear::All);
-        println!("plr {} is the winner!", char::from(x));
+        println!("{}{}plr {} is the winner!",termion::clear::All, termion::cursor::Goto(1,1), char::from(x));
         print_board(&board);
 
         //should we have a rematch?
-		let rematch_enum : YN= input("Rematch[y/n]:");
+		let rematch_enum:YN=input("Rematch[y/n]:");
 		rematch=match rematch_enum {
 			YN::Y => true,
 			YN::N => false
 		};
+        //grab other answer and send ours
         let mut buf:[u8;1]=[0];
-        //can't both 
-        //if is_client {
-            tcp_stream.write(&[rematch as u8]).unwrap();
-            tcp_stream.read(&mut buf).unwrap();
-        //} else {
-        //    tcp_stream.read(&mut buf).unwrap();
-        //    tcp_stream.write(&[rematch as u8]).unwrap();
-        //}
+        tcp_stream.write(&[rematch as u8]).unwrap();
+        tcp_stream.read(&mut buf).unwrap();
+        handle_sig();
+        //both
         rematch=rematch&&buf[0]!=0;
 	} //while rematch
 	tcp_stream.shutdown(std::net::Shutdown::Both).unwrap();
@@ -232,7 +231,9 @@ fn check_win(board: &[[u8;3];3]) -> u8 {
     }
     return 0;
 }
-
+fn handle_sig() {
+	if INT.load(Ordering::SeqCst) {std::process::exit(1);}
+}
 fn input<T: FromStr + std::fmt::Debug>(mesg:&str) -> T where <T as FromStr>::Err: core::fmt::Debug {
 	let mut input_line = String::new();
 	let stdin = std::io::stdin();
@@ -240,6 +241,7 @@ fn input<T: FromStr + std::fmt::Debug>(mesg:&str) -> T where <T as FromStr>::Err
 	print!("{}",mesg);
 	stdout.flush().unwrap();
 	stdin.read_line(&mut input_line).expect("failed to readline");
+	handle_sig();
 	let mut line_result:Result<T, _> = input_line.trim().parse();
 	while !line_result.is_ok() {
 		input_line.clear();
@@ -252,33 +254,15 @@ fn input<T: FromStr + std::fmt::Debug>(mesg:&str) -> T where <T as FromStr>::Err
 	}
 	return line_result.expect("XP");
 }
-fn get_port() -> u16 {
-	let mut input_line = String::new();
-	let stdin = std::io::stdin();
-	let mut stdout = std::io::stdout();
-	print!("port: ");
-	stdout.flush().unwrap();
-	stdin.read_line(&mut input_line).expect("failed to readline");
-	let mut line_result:Result<u16, _> = input_line.trim().parse();
-	while !line_result.is_ok() {
-		input_line.clear();
-		println!("Invalid!");
-		println!("{:?}",line_result);
-		print!("port: ");
-		stdout.flush().unwrap();
-		stdin.read_line(&mut input_line).expect("failed to readline");
-		line_result = input_line.trim().parse();
-	}
-	return line_result.expect("XP");
-}
-fn get_ip() -> IpAddr {
+fn get_ip() -> SocketAddr {
 	let mut input_line = String::new();
 	let stdin = std::io::stdin();
 	let mut stdout = std::io::stdout();
 	print!("Server IP: ");
 	stdout.flush().unwrap();
 	stdin.read_line(&mut input_line).expect("failed to readline");
-	let mut line_result:Result<IpAddr, _> = input_line.trim().parse();
+	handle_sig();
+    let mut line_result:Result<SocketAddr, _> = input_line.trim().parse();
 	while !line_result.is_ok() {
 		input_line.clear();
 		println!("Invalid!");
@@ -306,7 +290,8 @@ fn get_board(s:&mut TcpStream,board: &mut [[u8;3];3]) {
 		board[2][0],board[2][1],board[2][2],b'\n'
 		];
 	s.read(&mut tmp).unwrap();
-	println!("[debug] get_board:{:?}",tmp);
+	handle_sig();
+	//println!("[debug] get_board:{:?}",tmp);
 	for y in 0..3 {
 		for x in 0..3 {
 			board[y][x]=tmp[y*3+x];
