@@ -10,10 +10,11 @@ fn main() {
 	let stdin = std::io::stdin();
 	let mut stdout = std::io::stdout().into_alternate_screen().unwrap();
 	ctrlc::set_handler(|| {println!("{}",ToMainScreen);INT.store(true,Ordering::SeqCst)}).expect("couldn't set ctrlc handler");
-    print!("Server or Client[s/C]: ");
+    print!("{}Server or Client[s/C]: ",termion::cursor::Goto(1,1));
 	stdout.flush().unwrap();
 	stdin.read_line(&mut input_line).unwrap();
-	input_line = input_line.to_ascii_lowercase().replace("\n", "");
+	handle_sig();
+    input_line = input_line.to_ascii_lowercase().replace("\n", "");
 	let is_client= input_line!="s".to_string();
 	input_line.clear();
 
