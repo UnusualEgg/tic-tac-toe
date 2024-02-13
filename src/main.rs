@@ -90,20 +90,13 @@ fn main() {
 }
 
 #[test]
-fn test_check_match() {
-	assert_eq!(check_match(b'x',&[[b'x',b'x',b'x'],[0,0,0],[0,0,0]],&[[1,1,1],[0,0,0],[0,0,0]]),b'x');
-	assert_eq!(check_match(b'o',&[[b'x',b'x',b'x'],[b'o',b'o',b'o'],[0,0,0]],&[[1,1,1],[0,0,0],[0,0,0]]),0);
-	assert_eq!(check_match(b'o',&[[b'x',b'x',b'x'],[b'o',b'o',b'o'],[0,0,0]],&[[0,0,0],[1,1,1],[0,0,0]]),b'o');
-	assert_eq!(check_match(b'o',&[[b'x',b'o',b'o'],[0,0,b'o'],[0,0,b'o']],&[[1,1,1],[0,0,0],[0,0,0]]),0);
-	assert_eq!(check_match(b'o',&[[b'x',b'o',b'o'],[0,0,b'o'],[0,0,b'o']],&[[0,0,1],[0,0,1],[0,0,1]]),b'o');
-}
-#[test]
 fn test_basic_check_win() {
 	assert_eq!(check_win(&[[b'x',b'x',b'x'],[0,0,0],[0,0,0]]),b'x');
 	assert_eq!(check_win(&[[0,0,0],[b'x',b'x',b'x'],[0,0,0]]),b'x');
 	assert_eq!(check_win(&[[0,0,0],[0,0,0],[b'x',b'x',b'x']]),b'x');
 	assert_eq!(check_win(&[[0,0,b'x'],[0,0,b'x'],[0,0,b'x']]),b'x');
-	assert_eq!(check_win(&[[b'o',b'.',b'x'],[b'x',b'o',b'.'],[b'.',b'.',b'o']]),b'o');
+	//the empty squares can be anything except b'x' or b'o'
+    assert_eq!(check_win(&[[b'o',b'.',b'x'],[b'x',b'o',b'.'],[b'.',b'.',b'o']]),b'o');
 
 }
 #[test]
@@ -186,73 +179,35 @@ fn check_full(board: &[[u8;3];3]) -> bool {
 	}
 	return true;//found no empty spaces
 }
+
+//returns b'x', b'o' if win or else 0
 fn check_win(board: &[[u8;3];3]) -> u8 {
-	const wins:[[[u8;3];3];8] = [
-		[
-			[1,0,0],
-			[1,0,0],
-			[1,0,0],
-		],
-		[
-			[0,1,0],
-			[0,1,0],
-			[0,1,0],
-		],
-		[
-			[0,0,1],
-			[0,0,1],
-			[0,0,1],
-		],
-		[
-			[1,0,0],
-			[0,1,0],
-			[0,0,1],
-		],
-		[
-			[0,0,1],
-			[0,1,0],
-			[1,0,0],
-		],
-		[
-			[1,1,1],
-			[0,0,0],
-			[0,0,0],
-		],
-		[
-			[0,0,0],
-			[1,1,1],
-			[0,0,0],
-		],
-		[
-			[0,0,0],
-			[0,0,0],
-			[1,1,1],
-		],
-	];
-	for p in [b'x',b'o'] {
-		for i in wins {
-			let w = check_match(p,board,&i);
-			if w!=0 {return w;}
-		}
-	}
-	return 0;
-}
-fn check_match(p:u8,b1:&[[u8;3];3],b2:&[[u8;3];3]) -> u8 {
-	let mut matches = 0;
-	for y in 0..3 {
-		for x in 0..3 {
-			if b2[y][x]!=1 {//[[0 0 1][0 0 1][0 0 1]]
-				continue;//go to next cell
-			}
-			if b1[y][x]==p {//[[o o x][0 0 x][0 0 x]]
-				matches+=1;
-				if matches>=3 {return p}
-			} else {
-				return 0;//this doesn't match so don't bother
-			}
-		}
-	}
-	return 0;
+    for p in [b'x',b'o'] {
+        //horizontal wins
+        for y in board {
+            if  y[0]==p&& 
+                y[1]==p&& 
+                y[2]==p
+            {return p;}
+        }
+        //veritical
+        for x in 0..3 {
+            if  board[0][x]==p &&
+                board[1][x]==p &&
+                board[2][x]==p 
+            {return p;}
+        }
+        //diagonal
+        if  board[0][0]==p &&
+            board[1][1]==p &&
+            board[2][2]==p
+        {return p;}
+        if  board[0][2]==p &&
+            board[1][1]==p &&
+            board[2][0]==p
+        {return p;}
+    }
+    return 0;
 }
 
 fn input<T: FromStr + std::fmt::Debug>(mesg:&str) -> T where <T as FromStr>::Err: core::fmt::Debug {
