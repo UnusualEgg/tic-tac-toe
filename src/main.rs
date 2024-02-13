@@ -78,10 +78,10 @@ fn main() {
 			full=check_full(&board);
 			print_board(&board);
 		}
-		let rematch_enum : yn= input("Rematch[y/n]:");
+		let rematch_enum : YN= input("Rematch[y/n]:");
 		rematch=match rematch_enum {
-			yn::y => true,
-			yn::n => false
+			YN::Y => true,
+			YN::N => false
 		};
 	}
 	println!("plr {} is the winner!", char::from(x));
@@ -124,45 +124,45 @@ fn test_check_full() {
 }
 
 #[derive(Debug)]
-enum yn {
-	y,
-	n,
+enum YN {
+	Y,
+	N,
 }
-impl FromStr for yn {
+impl FromStr for YN {
 	type Err = String;
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s {
-			"y" => Ok(yn::y),
-			"n" => Ok(yn::n),
+			"y" => Ok(YN::Y),
+			"n" => Ok(YN::N),
 			_ => Err("Yes or No[y/n]: {}".to_string().replace("{}", s)),
 		}
 	}
 }
 #[derive(Debug)]
 enum Pos {
-	tl=0,
-	t=1,
-	tr=2,
-	l=3,
-	c=4,
-	r=5,
-	bl=6,
-	b=7,
-	br=8
+	TL=0,
+	T=1,
+	TR=2,
+	L=3,
+	C=4,
+	R=5,
+	BL=6,
+	B=7,
+	BR=8
 }
 impl FromStr for Pos {
 	type Err = String;
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		match s {
-			"tl" => Ok(Pos::tl),
-			"t"  => Ok(Pos::t ),
-			"tr" => Ok(Pos::tr),
-			"l"  => Ok(Pos::l ),
-			"c"  => Ok(Pos::c ),
-			"r"  => Ok(Pos::r ),
-			"bl" => Ok(Pos::bl),
-			"b"  => Ok(Pos::b ),
-			"br" => Ok(Pos::br),
+			"tl" => Ok(Pos::TL),
+			"t"  => Ok(Pos::T ),
+			"tr" => Ok(Pos::TR),
+			"l"  => Ok(Pos::L ),
+			"c"  => Ok(Pos::C ),
+			"r"  => Ok(Pos::R ),
+			"bl" => Ok(Pos::BL),
+			"b"  => Ok(Pos::B ),
+			"br" => Ok(Pos::BR),
 			_ => Err("Pick a valid spot. you picked: {}".to_string().replace("{}", s)),
 		}
 	}
@@ -239,7 +239,7 @@ fn check_win(board: &[[u8;3];3]) -> u8 {
 }
 fn check_match(p:u8,b1:&[[u8;3];3],b2:&[[u8;3];3]) -> u8 {
 	let mut matches = 0;
-	'out: for y in 0..3 {
+	for y in 0..3 {
 		for x in 0..3 {
 			if b2[y][x]!=1 {//[[0 0 1][0 0 1][0 0 1]]
 				continue;//go to next cell
