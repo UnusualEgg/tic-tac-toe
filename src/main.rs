@@ -55,32 +55,12 @@ fn main() {
 			if plr==plr_num {
 				println!("Yo it's my turn");
 				let mut pos_enum: Pos = input("Which square[tl/t/tr/l/c/r/bl/b/br]: ");
-				let mut pos:u8 = match pos_enum {
-					Pos::tl	=>0,
-					Pos::t 	=>1,
-					Pos::tr	=>2,
-					Pos::l 	=>3,
-					Pos::c 	=>4,
-					Pos::r 	=>5,
-					Pos::bl	=>6,
-					Pos::b 	=>7,
-					Pos::br =>8,
-				};
+				let mut pos:u8 = pos_enum as u8;
 				let mut y:usize = (pos / 3).into();
 				let mut x:usize = (pos % 3).into();
 				while board[y][x]==b'x'||board[y][x]==b'o' {
 					pos_enum = input("Try again[tl/t/tr/l/c/r/bl/b/br]: ");
-					pos = match pos_enum {
-						Pos::tl	=>0,
-						Pos::t 	=>1,
-						Pos::tr	=>2,
-						Pos::l 	=>3,
-						Pos::c 	=>4,
-						Pos::r 	=>5,
-						Pos::bl	=>6,
-						Pos::b 	=>7,
-						Pos::br =>8,
-					};
+					pos = pos_enum as u8;
 					y = (pos / 3).into();
 					x = (pos % 3).into();
 				}
