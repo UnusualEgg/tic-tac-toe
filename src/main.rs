@@ -1,17 +1,20 @@
 use std::{net::{TcpListener, TcpStream, IpAddr}, io::{Write, Read}, str::FromStr, fmt::Debug};
+use termion::screen::IntoAlternateScreen;
 use local_ip_address::local_ip;
 fn main() {
 
-	let mut input_line = String::new();
+	//get option client or server
+    let mut input_line = String::new();
 	let stdin = std::io::stdin();
-	let mut stdout = std::io::stdout();
+	let mut stdout = std::io::stdout().into_alternate_screen().unwrap();
 	print!("Server or Client[s/C]: ");
 	stdout.flush().unwrap();
 	stdin.read_line(&mut input_line).unwrap();
 	input_line = input_line.to_ascii_lowercase().replace("\n", "");
 	let is_client= input_line!="s".to_string();
 	input_line.clear();
-	
+
+	//bind/connect
 	let (ip,port,client_addr);
 	let mut tcp_stream;
 	if !is_client {
@@ -28,6 +31,7 @@ fn main() {
 		tcp_stream = TcpStream::connect((ip,port)).unwrap();
 	}
 	
+    //server picks pick random first player
 	let mut board: [[u8;3];3] = [[b'.';3];3];
 	let mut plr:u8;
 	if !is_client {
@@ -40,16 +44,19 @@ fn main() {
 		plr = buf[0];
 	}
 	let plr_num = if is_client {2} else {1};
-	print_board(&board);
-	// send_board(&mut tcp_stream, &board);
-	let mut x = check_win(&board);
+
+
+	//actually run the game now
+    let mut x:u8 = 0;//the winning player or 0
 	let mut rematch:bool=true;
 	let mut full:bool=false;
 	while rematch {
 		while x==0&&!full  {
+            println!("{}{}'s turn",termion::clear::All, if plr==1 {'x'} else {'o'});
 			//do plr turn
 			if plr==plr_num {
 				println!("Yo it's my turn");
+                print_board(&board);
 				let mut pos_enum: Pos = input("Which square[tl/t/tr/l/c/r/bl/b/br]: ");
 				let mut pos:u8 = pos_enum as u8;
 				let mut y:usize = (pos / 3).into();
@@ -65,22 +72,38 @@ fn main() {
 				send_board(&mut tcp_stream, &board);
 
 			} else {
-				println!("Getting board");
+                print_board(&board);
+				println!("Getting board/awaiting move");
 				get_board(&mut tcp_stream, &mut board);
 			}
+            //next player's turn
 			plr = if plr==1 {2} else {1};
 			x=check_win(&board);
-			println!("x:{}",x);
 			full=check_full(&board);
-			print_board(&board);
-		}
+		}//while currently playing
+        
+        //show winning move
+        print!("{}",termion::clear::All);
+        println!("plr {} is the winner!", char::from(x));
+        print_board(&board);
+
+        //should we have a rematch?
 		let rematch_enum : YN= input("Rematch[y/n]:");
 		rematch=match rematch_enum {
 			YN::Y => true,
 			YN::N => false
 		};
-	}
-	println!("plr {} is the winner!", char::from(x));
+        let mut buf:[u8;1]=[0];
+        //can't both 
+        //if is_client {
+            tcp_stream.write(&[rematch as u8]).unwrap();
+            tcp_stream.read(&mut buf).unwrap();
+        //} else {
+        //    tcp_stream.read(&mut buf).unwrap();
+        //    tcp_stream.write(&[rematch as u8]).unwrap();
+        //}
+        rematch=rematch&&buf[0]!=0;
+	} //while rematch
 	tcp_stream.shutdown(std::net::Shutdown::Both).unwrap();
 	println!("Hello, world!");
 }
