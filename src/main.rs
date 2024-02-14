@@ -104,6 +104,7 @@ fn main() {
         print_board(&board);
 
         //should we have a rematch?
+		//FIXME
 		let rematch_enum:YN=input("Rematch[y/n]:");
 		rematch=match rematch_enum {
 			YN::Y => true,
