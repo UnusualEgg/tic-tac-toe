@@ -4,7 +4,7 @@ use local_ip_address::local_ip;
 use std::sync::atomic::{AtomicBool,Ordering};
 static INT:AtomicBool = AtomicBool::new(false);
 fn main() {
-
+        
 	//get option client or server
     let mut input_line = String::new();
 	let stdin = std::io::stdin();
@@ -14,15 +14,24 @@ fn main() {
 	stdout.flush().unwrap();
 	stdin.read_line(&mut input_line).unwrap();
 	handle_sig();
-    input_line = input_line.to_ascii_lowercase().replace("\n", "");
-	let is_client= input_line!="s".to_string();
+    input_line = input_line.to_ascii_lowercase().replace('\n', "");
+	let is_client= input_line!=*"s";
 	input_line.clear();
 
 	//bind/connect
 	let mut tcp_stream;
 	if !is_client {
-		let ip = local_ip().unwrap();
-		let socket = TcpListener::bind((ip,0)).unwrap();
+        let mut port = 0;
+        let mut args = std::env::args();
+        args.next().expect("L");
+		if let Some(p) = args.next() {
+            port=p.parse().unwrap();
+            println!("port:{}",port);
+        } else {
+            println!("normal");
+        }
+        let ip = local_ip().unwrap();
+		let socket = TcpListener::bind((ip,port)).unwrap();
         println!("serving on {:?}",socket.local_addr().unwrap());
         print!("awaiting connection... ");
         stdout.flush().unwrap();
@@ -39,11 +48,11 @@ fn main() {
 	let mut plr:u8;
 	if !is_client {
 		plr = if rand::random() {1} else {2};//player 1's turn(50/50 bc bool is only true or false)
-		tcp_stream.write(&[plr]).unwrap();
+		if tcp_stream.write(&[plr]).unwrap()== 0 {println!("{}couldn't send player. exiting.",termion::screen::ToMainScreen);};
 		println!("{} is first!", if plr==1 {"Server"} else {"Client"});
 	} else {
 		let mut buf: [u8;1] = [0];
-		tcp_stream.read(&mut buf).unwrap();
+		if tcp_stream.read(&mut buf).unwrap() == 0 {println!("{}couldn't get player. exiting.",termion::screen::ToMainScreen);};
 		plr = buf[0];
 	}
 	let plr_num = if is_client {2} else {1};
@@ -102,10 +111,14 @@ fn main() {
 		};
         //grab other answer and send ours
         let mut buf:[u8;1]=[0];
-        tcp_stream.write(&[rematch as u8]).unwrap();
-        tcp_stream.read(&mut buf).unwrap();
-        handle_sig();
-        //both
+		{
+			let v=tcp_stream.write(&[rematch as u8]);
+			let x =if let Ok(x)=v {x==0} else {true};
+			if x {println!("{}couldn't get board. exiting.",termion::screen::ToMainScreen);rematch=false;};
+			if tcp_stream.read(&mut buf).unwrap() == 1 {rematch=false;};
+			handle_sig();
+		}
+		//both
         rematch=rematch&&buf[0]!=0;
 	} //while rematch
 	tcp_stream.shutdown(std::net::Shutdown::Both).unwrap();
@@ -134,9 +147,9 @@ fn test_multiple_on_baord() {
 }
 #[test]
 fn test_check_full() {
-	assert_eq!(check_full(&[[b'x',b'x',b'o'];3]),true);
-	assert_eq!(check_full(&[[b'x',b'o',b'.'];3]),false);
-	assert_eq!(check_full(&[[b'.';3];3]),false);
+	assert!(check_full(&[[b'x',b'x',b'o'];3]));
+	assert!(!check_full(&[[b'x',b'o',b'.'];3]));
+	assert!(!check_full(&[[b'.';3];3]));
 }
 
 #[derive(Debug)]
@@ -186,21 +199,21 @@ impl FromStr for Pos {
 
 fn print_board(board: &[[u8;3];3]) {
 	print!("-----\n ");
-	for y in 0..3 {
-		print!("{}",String::from_utf8_lossy(&board[y]));
+	for c in board.iter().take(3) {
+		print!("{}",String::from_utf8_lossy(c));
 		print!("\n ");
 	}
 	println!("\x08-----\n\n");
 }
 fn check_full(board: &[[u8;3];3]) -> bool {
-	for y in 0..3 {
-		for x in 0..3 {
-			if board[y][x]!=b'x'&&board[y][x]!=b'o' {//if any empty spaces
+	for y in board.iter().take(3) {
+		for c in y.iter().take(3) {
+			if *c!=b'x'&&*c!=b'o' {//if any empty spaces
 				return false;//then exit
 			}
 		}
 	}
-	return true;//found no empty spaces
+	true //found no empty spaces
 }
 
 //returns b'x', b'o' if win or else 0
@@ -230,7 +243,7 @@ fn check_win(board: &[[u8;3];3]) -> u8 {
             board[2][0]==p
         {return p;}
     }
-    return 0;
+    0
 }
 fn handle_sig() {
 	if INT.load(Ordering::SeqCst) {std::process::exit(1);}
@@ -244,7 +257,7 @@ fn input<T: FromStr + std::fmt::Debug>(mesg:&str) -> T where <T as FromStr>::Err
 	stdin.read_line(&mut input_line).expect("failed to readline");
 	handle_sig();
 	let mut line_result:Result<T, _> = input_line.trim().parse();
-	while !line_result.is_ok() {
+	while line_result.is_err() {
 		input_line.clear();
 		println!("Invalid!");
 		println!("{:?}",line_result);
@@ -253,7 +266,7 @@ fn input<T: FromStr + std::fmt::Debug>(mesg:&str) -> T where <T as FromStr>::Err
 		stdin.read_line(&mut input_line).expect("failed to readline");
 		line_result = input_line.trim().parse();
 	}
-	return line_result.expect("XP");
+	line_result.expect("XP")
 }
 fn get_ip() -> SocketAddr {
 	let mut input_line = String::new();
@@ -264,16 +277,17 @@ fn get_ip() -> SocketAddr {
 	stdin.read_line(&mut input_line).expect("failed to readline");
 	handle_sig();
     let mut line_result:Result<SocketAddr, _> = input_line.trim().parse();
-	while !line_result.is_ok() {
+	while line_result.is_err() {
 		input_line.clear();
 		println!("Invalid!");
 		println!("{:?}",line_result);
 		print!("Server IP: ");
 		stdout.flush().unwrap();
 		stdin.read_line(&mut input_line).expect("failed to readline");
+		handle_sig();
 		line_result = input_line.trim().parse();
 	}
-	return line_result.expect("XP");
+	line_result.expect("XP")
 }
 fn send_board(s:&mut TcpStream,board: &[[u8;3];3]) {
 	let mut tmp: [u8;9]=[0u8;9];
@@ -282,15 +296,19 @@ fn send_board(s:&mut TcpStream,board: &[[u8;3];3]) {
 			tmp[y*3+x]=board[y][x];
 		}
 	}
-	s.write(&tmp).expect("couldn't write");
+	let v=s.write(&tmp);
+	let x =if let Ok(x)=v {x==0} else {true};
+	if x {println!("{}couldn't send board. exiting.",termion::screen::ToMainScreen);std::process::exit(1)};
 }
 fn get_board(s:&mut TcpStream,board: &mut [[u8;3];3]) {
-	let mut tmp:[u8;10]=[
+	let mut tmp:[u8;9]=[
 		board[0][0],board[0][1],board[0][2],
 		board[1][0],board[1][1],board[1][2],
-		board[2][0],board[2][1],board[2][2],b'\n'
-		];
-	s.read(&mut tmp).unwrap();
+		board[2][0],board[2][1],board[2][2]
+	];
+	let v=s.read(&mut tmp);
+	let x =if let Ok(x)=v {x<9} else {true};
+	if x {println!("{}couldn't get board. exiting.",termion::screen::ToMainScreen);std::process::exit(1)};
 	handle_sig();
 	//println!("[debug] get_board:{:?}",tmp);
 	for y in 0..3 {
